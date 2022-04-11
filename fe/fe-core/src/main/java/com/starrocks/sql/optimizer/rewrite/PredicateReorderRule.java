@@ -28,9 +28,8 @@ public class PredicateReorderRule implements PhysicalOperatorTreeRewriteRule {
     private static class PredicateReorderVisitor extends OptExpressionVisitor<OptExpression, Void> {
         @Override
         public OptExpression visit(OptExpression optExpression, Void context) {
-            for (int i = 0; i < optExpression.arity(); i++) {
-                OptExpression inputOptExpression = optExpression.inputAt(i);
-                inputOptExpression.getOp().accept(this, inputOptExpression, null);
+            for (int i = 0; i < optExpression.arity(); ++i) {
+                optExpression.setChild(i, optExpression.inputAt(i).getOp().accept(this, optExpression.inputAt(i), null));
             }
             return predicateRewrite(optExpression);
         }
@@ -43,28 +42,27 @@ public class PredicateReorderRule implements PhysicalOperatorTreeRewriteRule {
             }
             CompoundPredicateOperator compoundPredicateOperator = (CompoundPredicateOperator) predicate;
             //reorder predicate
-            optExpression.getOp().setPredicate(predicateReorder(compoundPredicateOperator, optExpression.getStatistics()));
+            predicateReorder(compoundPredicateOperator, optExpression.getStatistics());
             return optExpression;
         }
 
-        private ScalarOperator predicateReorder(ScalarOperator scalarOperator, Statistics statistics) {
-            // todo need to think partition columns & distribution columns & index
+        private void predicateReorder(ScalarOperator scalarOperator, Statistics statistics) {
             // get conjunctive predicate
-            List<ScalarOperator> conjunctiveScalarOperators = Utils.extractConjuncts(scalarOperator);
-            if (conjunctiveScalarOperators.size() <= 1) {
-                return scalarOperator;
-            } else {
-                DefaultPredicateSelectivityEstimator selectivityEstimator = new DefaultPredicateSelectivityEstimator();
-                conjunctiveScalarOperators.sort((o1, o2) -> {
-                    if (selectivityEstimator.estimate(o1, statistics) > selectivityEstimator.estimate(o2, statistics)) {
+            List<ScalarOperator> scalarOperators = Utils.extractConjuncts(scalarOperator);
+            if (scalarOperators.size() == 0) {
+                return;
+            }
+            for (ScalarOperator operator : scalarOperators) {
+                predicateReorder(operator, statistics);
+            }
+            if (scalarOperators.size() > 1) {
+                DefaultPredicateSelectivityEstimator heuristic = new DefaultPredicateSelectivityEstimator();
+                scalarOperators.sort((o1, o2) -> {
+                    if (heuristic.estimate(o1, statistics) > heuristic.estimate(o2, statistics)) {
                         return 1;
-                    } else if (selectivityEstimator.estimate(o1, statistics) < selectivityEstimator.estimate(o2, statistics)) {
-                        return -1;
-                    } else {
-                        return 0;
                     }
+                    return 0;
                 });
-                return Utils.createCompound(CompoundPredicateOperator.CompoundType.AND, conjunctiveScalarOperators);
             }
         }
     }
