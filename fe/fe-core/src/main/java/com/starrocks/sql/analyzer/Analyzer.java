@@ -31,6 +31,7 @@ import com.starrocks.qe.ConnectContext;
 import com.starrocks.qe.SessionVariable;
 import com.starrocks.sql.ast.AstVisitor;
 import com.starrocks.sql.ast.BaseGrantRevokeRoleStmt;
+import com.starrocks.sql.ast.CreateMaterializedViewStatement;
 import com.starrocks.sql.ast.QueryRelation;
 import com.starrocks.sql.ast.QueryStatement;
 import com.starrocks.sql.common.MetaUtils;
@@ -155,6 +156,12 @@ public class Analyzer {
         @Override
         public Void visitGrantRevokeRoleStatement(BaseGrantRevokeRoleStmt stmt, ConnectContext session) {
             GrantRevokeRoleAnalyzer.analyze(stmt, session);
+            return null;
+        }
+
+        @Override
+        public Void visitCreateMaterializedViewStatement(CreateMaterializedViewStatement statement, ConnectContext context) {
+            MaterializedViewAnalyzer.analyze(statement, context);
             return null;
         }
 

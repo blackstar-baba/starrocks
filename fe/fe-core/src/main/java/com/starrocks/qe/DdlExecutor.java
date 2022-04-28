@@ -89,6 +89,7 @@ import com.starrocks.load.EtlJobType;
 import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.ast.GrantRoleStmt;
 import com.starrocks.sql.ast.RevokeRoleStmt;
+import com.starrocks.sql.ast.CreateMaterializedViewStatement;
 
 public class DdlExecutor {
     public static void execute(GlobalStateMgr globalStateMgr, DdlStmt ddlStmt) throws Exception {
@@ -107,6 +108,8 @@ public class DdlExecutor {
         } else if (ddlStmt instanceof DropTableStmt) {
             globalStateMgr.dropTable((DropTableStmt) ddlStmt);
         } else if (ddlStmt instanceof CreateMaterializedViewStmt) {
+            globalStateMgr.createMaterializedView((CreateMaterializedViewStmt) ddlStmt);
+        } else if (ddlStmt instanceof CreateMaterializedViewStatement) {
             globalStateMgr.createMaterializedView((CreateMaterializedViewStmt) ddlStmt);
         } else if (ddlStmt instanceof DropMaterializedViewStmt) {
             globalStateMgr.dropMaterializedView((DropMaterializedViewStmt) ddlStmt);

@@ -30,6 +30,7 @@ statement
 
     // Materialized View Statement
     | showMaterializedViewStatement                                                         #showMaterializedView
+    | createMaterializedViewStatement                                                       #createMaterializedView
     | dropMaterializedViewStatement                                                         #dropMaterialized
 
     // DML Statement
@@ -111,6 +112,15 @@ dropViewStatement
 showMaterializedViewStatement
     : SHOW MATERIALIZED VIEW ((FROM | IN) db=qualifiedName)?
     ;
+createMaterializedViewStatement
+    : CREATE MATERIALIZED VIEW (IF NOT EXISTS)? mvName=qualifiedName
+      comment?
+      (PARTITION BY '(' primaryExpression (',' primaryExpression)* ')')?
+       distributionDesc?
+       refreshSchemeDesc
+       AS queryStatement
+       properties?
+     ;
 
 dropMaterializedViewStatement
     : DROP MATERIALIZED VIEW (IF EXISTS)? mvName=qualifiedName
@@ -318,6 +328,12 @@ relationPrimary
 partitionNames
     : TEMPORARY? (PARTITION | PARTITIONS) '(' identifier (',' identifier)* ')'
     | TEMPORARY? (PARTITION | PARTITIONS) identifier
+    ;
+
+refreshSchemeDesc
+    : REFRESH (SYNC
+    | ASYNC (START '(' string ')')? (EVERY '(' interval ')')?
+    | MANUAL)
     ;
 
 tabletList
@@ -684,7 +700,7 @@ number
     ;
 
 nonReserved
-    : AVG | ADMIN
+    : AVG | ADMIN | ASYNC
     | BUCKETS | BACKEND
     | CAST | CONNECTION_ID| CURRENT | COMMENT | COMMIT | COSTS | COUNT | CONFIG
     | DATA | DATABASE | DATE | DATETIME | DAY
@@ -694,13 +710,13 @@ nonReserved
     | HASH | HOUR
     | INTERVAL
     | LAST | LESS | LOCAL | LOGICAL
-    | MATERIALIZED | MAX | MIN | MINUTE | MONTH | MERGE
+    | MANUAL | MATERIALIZED | MAX | MIN | MINUTE | MONTH | MERGE
     | NONE | NULLS
     | OFFSET | OBSERVER
     | PASSWORD | PRECEDING | PROPERTIES
     | QUARTER
-    | ROLLUP | ROLLBACK | REPLICA
-    | SECOND | SESSION | SETS | START | SUM | STATUS
+    | REFRESH | ROLLUP | ROLLBACK | REPLICA
+    | SECOND | SESSION | SETS | START | SUM | STATUS | SYNC
     | TABLES | TABLET | TEMPORARY | TIMESTAMPADD | TIMESTAMPDIFF | THAN | TIME | TYPE
     | UNBOUNDED | USER
     | VIEW | VERBOSE
