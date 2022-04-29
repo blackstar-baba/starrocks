@@ -330,12 +330,6 @@ partitionNames
     | TEMPORARY? (PARTITION | PARTITIONS) identifier
     ;
 
-refreshSchemeDesc
-    : REFRESH (SYNC
-    | ASYNC (START '(' string ')')? (EVERY '(' interval ')')?
-    | MANUAL)
-    ;
-
 tabletList
     : TABLET '(' INTEGER_VALUE (',' INTEGER_VALUE)* ')'
     ;
@@ -572,6 +566,12 @@ partitionValue
 
 distributionDesc
     : DISTRIBUTED BY HASH identifierList (BUCKETS INTEGER_VALUE)?
+    ;
+
+refreshSchemeDesc
+    : REFRESH (SYNC
+    | ASYNC (START '(' string ')')? (EVERY '(' interval ')')?
+    | MANUAL)
     ;
 
 properties
