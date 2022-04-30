@@ -79,7 +79,6 @@ import com.starrocks.analysis.RangePartitionDesc;
 import com.starrocks.analysis.SelectList;
 import com.starrocks.analysis.SelectListItem;
 import com.starrocks.analysis.SetType;
-import com.starrocks.analysis.ShowDbStmt;
 import com.starrocks.analysis.ShowMaterializedViewStmt;
 import com.starrocks.analysis.ShowTableStmt;
 import com.starrocks.analysis.SingleRangePartitionDesc;
@@ -89,7 +88,6 @@ import com.starrocks.analysis.StringLiteral;
 import com.starrocks.analysis.Subquery;
 import com.starrocks.analysis.SysVariableDesc;
 import com.starrocks.analysis.TableName;
-import com.starrocks.analysis.TableRenameClause;
 import com.starrocks.analysis.TimestampArithmeticExpr;
 import com.starrocks.analysis.TypeDef;
 import com.starrocks.analysis.UpdateStmt;
@@ -214,21 +212,6 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
         QualifiedName qualifiedName = getQualifiedName(context.qualifiedName());
         TableName targetTableName = qualifiedNameToTableName(qualifiedName);
         return new DropTableStmt(ifExists, targetTableName, force);
-    public ParseNode visitTableRenameClause(StarRocksParser.TableRenameClauseContext context) {
-        Identifier identifier = (Identifier) visit(context.identifier());
-        return new TableRenameClause(identifier.getValue());
-    }
-
-    @Override
-    public ParseNode visitShowDatabases(StarRocksParser.ShowDatabasesContext context) {
-        if (context.pattern != null) {
-            StringLiteral stringLiteral = (StringLiteral) visit(context.pattern);
-            return new ShowDbStmt(stringLiteral.getValue());
-        } else if (context.expression() != null) {
-            return new ShowDbStmt(null, (Expr) visit(context.expression()));
-        } else {
-            return new ShowDbStmt(null, null);
-        }
     }
 
     @Override
@@ -268,53 +251,6 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
             return new ManualRefreshSchemeDesc();
         }
         return null;
-    }
-
-    @Override
-    public ParseNode visitCreateMaterializedView(StarRocksParser.CreateMaterializedViewContext context) {
-        if (!Config.enable_experimental_mv) {
-            throw new ParsingException("The experimental mv is disabled");
-        }
-        boolean ifNotExist = context.IF() != null;
-        QualifiedName qualifiedName = getQualifiedName(context.mvName);
-        TableName tableName = qualifiedNameToTableName(qualifiedName);
-        String comment =
-                context.comment() == null ? null : ((StringLiteral) visit(context.comment().string())).getStringValue();
-        List<StarRocksParser.PrimaryExpressionContext> primaryExpressionContexts = context.primaryExpression();
-        if (primaryExpressionContexts.size() > 1) {
-            throw new IllegalArgumentException("Partition expressions currently only support one");
-        }
-        List<SlotRef> partitionExpressions = Lists.newArrayList();
-        for (StarRocksParser.PrimaryExpressionContext primaryExpressionContext : primaryExpressionContexts) {
-            Expr expr = (Expr) visit(primaryExpressionContext);
-            if (!(expr instanceof SlotRef)) {
-                throw new IllegalArgumentException("Partition exp " + expr.toSql() + " must be alias of select item");
-            }
-            partitionExpressions.add(((SlotRef) expr));
-        }
-        PartitionExpDesc partitionExpDesc = new PartitionExpDesc(partitionExpressions);
-        RefreshSchemeDesc refreshSchemeDesc = ((RefreshSchemeDesc) visit(context.refreshSchemeDesc()));
-        // get query statement
-        QueryStatement queryStatement = (QueryStatement) visit(context.queryStatement());
-        // get properties if exists
-        Map<String, String> properties = new HashMap<>();
-        if (context.properties() != null) {
-            List<Property> propertyList = visit(context.properties().property(), Property.class);
-            for (Property property : propertyList) {
-                properties.put(property.getKey(), property.getValue());
-            }
-        }
-        DistributionDesc distributionDesc =
-                context.distributionDesc() == null ? null : (DistributionDesc) visit(context.distributionDesc());
-        return new CreateMaterializedViewStatement(tableName, ifNotExist, comment,
-                refreshSchemeDesc, partitionExpDesc, distributionDesc, properties, queryStatement);
-    }
-
-    @Override
-    public ParseNode visitDropMaterialized(StarRocksParser.DropMaterializedContext context) {
-        QualifiedName mvQualifiedName = getQualifiedName(context.qualifiedName());
-        TableName mvName = qualifiedNameToTableName(mvQualifiedName);
-        return new DropMaterializedViewStmt(context.IF() != null, mvName);
     }
 
     @Override
@@ -408,6 +344,45 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
 
     // ------------------------------------------- Materialized View Statement -----------------------------------------
 
+    public ParseNode visitCreateMaterializedViewStatement(StarRocksParser.CreateMaterializedViewStatementContext context) {
+        if (!Config.enable_experimental_mv) {
+            throw new ParsingException("The experimental mv is disabled");
+        }
+        boolean ifNotExist = context.IF() != null;
+        QualifiedName qualifiedName = getQualifiedName(context.mvName);
+        TableName tableName = qualifiedNameToTableName(qualifiedName);
+        String comment =
+                context.comment() == null ? null : ((StringLiteral) visit(context.comment().string())).getStringValue();
+        List<StarRocksParser.PrimaryExpressionContext> primaryExpressionContexts = context.primaryExpression();
+        if (primaryExpressionContexts.size() > 1) {
+            throw new IllegalArgumentException("Partition expressions currently only support one");
+        }
+        List<SlotRef> partitionExpressions = Lists.newArrayList();
+        for (StarRocksParser.PrimaryExpressionContext primaryExpressionContext : primaryExpressionContexts) {
+            Expr expr = (Expr) visit(primaryExpressionContext);
+            if (!(expr instanceof SlotRef)) {
+                throw new IllegalArgumentException("Partition exp " + expr.toSql() + " must be alias of select item");
+            }
+            partitionExpressions.add(((SlotRef) expr));
+        }
+        PartitionExpDesc partitionExpDesc = new PartitionExpDesc(partitionExpressions);
+        RefreshSchemeDesc refreshSchemeDesc = ((RefreshSchemeDesc) visit(context.refreshSchemeDesc()));
+        // get query statement
+        QueryStatement queryStatement = (QueryStatement) visit(context.queryStatement());
+        // get properties if exists
+        Map<String, String> properties = new HashMap<>();
+        if (context.properties() != null) {
+            List<Property> propertyList = visit(context.properties().property(), Property.class);
+            for (Property property : propertyList) {
+                properties.put(property.getKey(), property.getValue());
+            }
+        }
+        DistributionDesc distributionDesc =
+                context.distributionDesc() == null ? null : (DistributionDesc) visit(context.distributionDesc());
+        return new CreateMaterializedViewStatement(tableName, ifNotExist, comment,
+                refreshSchemeDesc, partitionExpDesc, distributionDesc, properties, queryStatement);
+    }
+
     @Override
     public ParseNode visitShowMaterializedViewStatement(StarRocksParser.ShowMaterializedViewStatementContext context) {
         String database = null;
@@ -454,12 +429,6 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
     public ParseNode visitDropIndexClause(StarRocksParser.DropIndexClauseContext context) {
         Identifier identifier = (Identifier) visit(context.identifier());
         return new DropIndexClause(identifier.getValue(), null, true);
-    }
-
-    @Override
-    public ParseNode visitTableRenameClause(StarRocksParser.TableRenameClauseContext context) {
-        Identifier identifier = (Identifier) visit(context.identifier());
-        return new TableRenameClause(identifier.getValue());
     }
 
     @Override
@@ -1114,18 +1083,6 @@ public class AstBuilder extends StarRocksBaseVisitor<ParseNode> {
     }
 
     // ------------------------------------------- Other Statement -----------------------------------------------------
-
-    @Override
-    public ParseNode visitShowDatabases(StarRocksParser.ShowDatabasesContext context) {
-        if (context.pattern != null) {
-            StringLiteral stringLiteral = (StringLiteral) visit(context.pattern);
-            return new ShowDbStmt(stringLiteral.getValue());
-        } else if (context.expression() != null) {
-            return new ShowDbStmt(null, (Expr) visit(context.expression()));
-        } else {
-            return new ShowDbStmt(null, null);
-        }
-    }
 
     @Override
     public ParseNode visitUse(StarRocksParser.UseContext context) {

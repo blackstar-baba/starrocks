@@ -29,8 +29,8 @@ statement
     | dropViewStatement                                                                     #dropView
 
     // Materialized View Statement
-    | showMaterializedViewStatement                                                         #showMaterializedView
     | createMaterializedViewStatement                                                       #createMaterializedView
+    | showMaterializedViewStatement                                                         #showMaterializedView
     | dropMaterializedViewStatement                                                         #dropMaterialized
 
     // DML Statement
@@ -112,15 +112,16 @@ dropViewStatement
 showMaterializedViewStatement
     : SHOW MATERIALIZED VIEW ((FROM | IN) db=qualifiedName)?
     ;
+
 createMaterializedViewStatement
     : CREATE MATERIALIZED VIEW (IF NOT EXISTS)? mvName=qualifiedName
       comment?
       (PARTITION BY '(' primaryExpression (',' primaryExpression)* ')')?
-       distributionDesc?
-       refreshSchemeDesc
-       AS queryStatement
-       properties?
-     ;
+      distributionDesc?
+      refreshSchemeDesc
+      AS queryStatement
+      properties?
+    ;
 
 dropMaterializedViewStatement
     : DROP MATERIALIZED VIEW (IF EXISTS)? mvName=qualifiedName

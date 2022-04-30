@@ -87,9 +87,10 @@ import com.starrocks.common.Config;
 import com.starrocks.common.DdlException;
 import com.starrocks.load.EtlJobType;
 import com.starrocks.server.GlobalStateMgr;
+import com.starrocks.sql.ast.CreateMaterializedViewStatement;
 import com.starrocks.sql.ast.GrantRoleStmt;
 import com.starrocks.sql.ast.RevokeRoleStmt;
-import com.starrocks.sql.ast.CreateMaterializedViewStatement;
+
 
 public class DdlExecutor {
     public static void execute(GlobalStateMgr globalStateMgr, DdlStmt ddlStmt) throws Exception {
